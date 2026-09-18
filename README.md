@@ -21,7 +21,7 @@ El objetivo principal es resolver la dispersión de exámenes oftalmológicos 
 
 ---
 
-## 🔄 Flujo de Usuario (Diagrama de Actividad UML)
+## 🔄 Flujo de Usuario (Diagrama de Actividad)
 
 ```mermaid
 stateDiagram-v2
