@@ -1,11 +1,13 @@
 package com.example.oftapp.ui.screens
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.oftapp.viewmodel.ExamenViewModel
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
@@ -18,6 +20,9 @@ sealed class Screen(val route: String) {
 
 @Composable
 fun OftAppNavGraph(navController: NavHostController) {
+    // Instancia única del ViewModel compartida para la navegación
+    val examenViewModel: ExamenViewModel = viewModel()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Login.route
@@ -31,6 +36,7 @@ fun OftAppNavGraph(navController: NavHostController) {
                 }
             )
         }
+
         composable(
             route = Screen.Dashboard.route,
             arguments = listOf(navArgument("rol") { type = NavType.StringType })
@@ -47,13 +53,17 @@ fun OftAppNavGraph(navController: NavHostController) {
                 }
             )
         }
+
         composable(Screen.RegistroExamen.route) {
             RegistroExamenScreen(
+                examenViewModel = examenViewModel,
                 onVolver = { navController.popBackStack() }
             )
         }
+
         composable(Screen.Historial.route) {
             HistorialScreen(
+                examenViewModel = examenViewModel,
                 onVolver = { navController.popBackStack() }
             )
         }
