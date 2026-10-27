@@ -25,16 +25,78 @@ class ExamenViewModel(private val repository: ExamenRepository) : ViewModel() {
         }
     }
 
-    fun seleccionarRol(rol: RolUsuario) {
-        _uiState.update { it.copy(rolSeleccionado = rol) }
+    fun onUsuarioTextoChange(texto: String) {
+        _uiState.update { it.copy(usuarioTexto = texto, errorLogin = null) }
     }
 
+    fun onPasswordTextoChange(texto: String) {
+        _uiState.update { it.copy(passwordTexto = texto, errorLogin = null) }
+    }
+
+    // Autenticación con usuarios simplificados
     fun iniciarSesion() {
-        _uiState.update { it.copy(sesionIniciada = true) }
+        val estado = _uiState.value
+        val user = estado.usuarioTexto.trim().lowercase()
+        val pass = estado.passwordTexto.trim()
+
+        if (pass != "1234") {
+            _uiState.update { it.copy(errorLogin = "Contraseña incorrecta (Usa 1234)") }
+            return
+        }
+
+        when (user) {
+            "pedro" -> {
+                _uiState.update {
+                    it.copy(
+                        sesionIniciada = true,
+                        rolSeleccionado = RolUsuario.PACIENTE,
+                        usuarioTexto = "11.111.111-1", // RUT asociado a Pedro Gómez
+                        errorLogin = null
+                    )
+                }
+            }
+            "tecno" -> {
+                _uiState.update {
+                    it.copy(
+                        sesionIniciada = true,
+                        rolSeleccionado = RolUsuario.TECNOLOGO,
+                        errorLogin = null
+                    )
+                }
+            }
+            "medico" -> {
+                _uiState.update {
+                    it.copy(
+                        sesionIniciada = true,
+                        rolSeleccionado = RolUsuario.MEDICO,
+                        errorLogin = null
+                    )
+                }
+            }
+            "admin" -> {
+                _uiState.update {
+                    it.copy(
+                        sesionIniciada = true,
+                        rolSeleccionado = RolUsuario.ADMINISTRADOR,
+                        errorLogin = null
+                    )
+                }
+            }
+            else -> {
+                _uiState.update { it.copy(errorLogin = "Usuario no registrado. Usa: pedro, tecno, medico o admin") }
+            }
+        }
     }
 
     fun cerrarSesion() {
-        _uiState.update { it.copy(sesionIniciada = false) }
+        _uiState.update {
+            it.copy(
+                sesionIniciada = false,
+                usuarioTexto = "",
+                passwordTexto = "",
+                errorLogin = null
+            )
+        }
     }
 
     fun onNombreChange(nombre: String) {
@@ -61,6 +123,19 @@ class ExamenViewModel(private val repository: ExamenRepository) : ViewModel() {
         _uiState.update { it.copy(filtroTexto = filtro) }
     }
 
+    fun validarExamen(id: Int) {
+        _uiState.update { estadoActual ->
+            val listaActualizada = estadoActual.listaExamenes.map { examen ->
+                if (examen.id == id) {
+                    examen.copy(observaciones = "VALIDADO POR MÉDICO - Sin Hallazgos Patológicos")
+                } else {
+                    examen
+                }
+            }
+            estadoActual.copy(listaExamenes = listaActualizada)
+        }
+    }
+
     fun guardarExamen(onExito: () -> Unit) {
         val estado = _uiState.value
         if (estado.pacienteNombre.isBlank()) {
@@ -70,13 +145,15 @@ class ExamenViewModel(private val repository: ExamenRepository) : ViewModel() {
 
         viewModelScope.launch {
             val nuevoExamen = ExamenEntity(
+                id = (estado.listaExamenes.maxOfOrNull { it.id } ?: 0) + 1,
                 pacienteNombre = estado.pacienteNombre,
-                rut = estado.rut.ifBlank { "N/A" },
+                rut = estado.rut.ifBlank { "11.111.111-1" },
                 tipoExamen = estado.tipoExamen,
                 fecha = estado.fecha.ifBlank { "27/10/2026" },
-                observaciones = if (estado.observaciones.isBlank()) "Estado: VALIDADO" else "Estado: VALIDADO - ${estado.observaciones}"
+                observaciones = if (estado.observaciones.isBlank()) "PENDIENTE DE VALIDACIÓN" else "PENDIENTE DE VALIDACIÓN: ${estado.observaciones}"
             )
-            repository.insertar(nuevoExamen)
+
+            _uiState.update { it.copy(listaExamenes = it.listaExamenes + nuevoExamen) }
             limpiarFormulario()
             onExito()
         }

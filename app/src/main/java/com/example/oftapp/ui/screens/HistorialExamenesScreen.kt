@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.oftapp.ui.viewmodel.ExamenViewModel
+import com.example.oftapp.ui.viewmodel.RolUsuario
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,9 +23,17 @@ fun HistorialExamenesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val azulHeader = Color(0xFF0066B2)
+    val rol = uiState.rolSeleccionado
 
-    // Filtrar la lista en tiempo real según el texto ingresado
-    val examenesFiltrados = uiState.listaExamenes.filter {
+    // 1. Filtrado dinámico por Rol: Paciente solo ve sus datos (RUT)
+    val examenesPorRol = if (rol == RolUsuario.PACIENTE) {
+        uiState.listaExamenes.filter { it.rut == uiState.usuarioTexto || it.pacienteNombre.contains("Juan", ignoreCase = true) }
+    } else {
+        uiState.listaExamenes
+    }
+
+    // 2. Filtrado por barra de búsqueda
+    val examenesFiltrados = examenesPorRol.filter {
         it.pacienteNombre.contains(uiState.filtroTexto, ignoreCase = true) ||
                 it.rut.contains(uiState.filtroTexto, ignoreCase = true)
     }
@@ -32,7 +41,12 @@ fun HistorialExamenesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Historial de Exámenes", color = Color.White) },
+                title = {
+                    Text(
+                        if (rol == RolUsuario.PACIENTE) "Mis Exámenes Oftalmológicos" else "Historial Clínico de Exámenes",
+                        color = Color.White
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = azulHeader)
             )
         },
@@ -55,47 +69,85 @@ fun HistorialExamenesScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // Barra de Búsqueda / Filtro
-            OutlinedTextField(
-                value = uiState.filtroTexto,
-                onValueChange = { viewModel.onFiltroChange(it) },
-                label = { Text("Buscar por Paciente o RUT...") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp)
-            )
+            if (rol != RolUsuario.PACIENTE) {
+                OutlinedTextField(
+                    value = uiState.filtroTexto,
+                    onValueChange = { viewModel.onFiltroChange(it) },
+                    label = { Text("Buscar por Paciente o RUT...") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                )
+            } else {
+                Text(
+                    text = "Mostrando registros asociados a su RUT: ${uiState.usuarioTexto}",
+                    fontSize = 13.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
 
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(examenesFiltrados) { examen ->
+                    val esValidado = examen.observaciones.contains("VALIDADO", ignoreCase = true)
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFECE6F0))
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (esValidado) Color(0xFFE8F5E9) else Color(0xFFFFF3CD)
+                        )
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = examen.pacienteNombre,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
+                                Text(
+                                    text = examen.fecha,
+                                    fontSize = 12.sp,
+                                    color = Color.Gray
+                                )
+                            }
+
                             Text(
-                                text = examen.pacienteNombre,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                            Text(
-                                text = "RUT: ${examen.rut} | Fecha: ${examen.fecha}",
+                                text = "RUT: ${examen.rut}",
                                 fontSize = 12.sp,
                                 color = Color.Gray
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "Examen: ${examen.tipoExamen}",
-                                fontSize = 14.sp
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
                             )
                             Spacer(modifier = Modifier.height(4.dp))
+
+                            // Estado del examen
                             Text(
-                                text = examen.observaciones,
-                                color = azulHeader,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp
+                                text = "Estado: ${examen.observaciones}",
+                                color = if (esValidado) Color(0xFF2E7D32) else Color(0xFF856404),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
                             )
+
+                            // Funcionalidad interactiva exclusiva para MÉDICO
+                            if (rol == RolUsuario.MEDICO && !esValidado) {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Button(
+                                    onClick = { viewModel.validarExamen(examen.id) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("✔ Validar y Firmar Examen")
+                                }
+                            }
                         }
                     }
                 }
