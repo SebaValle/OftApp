@@ -1,6 +1,9 @@
 package com.example.oftapp.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,7 +27,7 @@ fun DashboardScreen(
     val azulHeader = Color(0xFF0066B2)
 
     if (!uiState.sesionIniciada) {
-        // Vista 1: Login
+        // Vista 1: Login Directo
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -42,29 +45,31 @@ fun DashboardScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Bienvenido a OftApp",
-                    fontSize = 26.sp,
+                    text = "OftApp VcM",
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = azulHeader
                 )
                 Text(
-                    text = "Sistema de Trazabilidad de Exámenes",
+                    text = "Plataforma de Trazabilidad Oftalmológica",
                     fontSize = 14.sp,
                     color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 20.dp)
                 )
 
-                // Tarjeta guía de credenciales simplificadas
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 20.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
-                        Text("🔑 Usuarios de Prueba (Clave general: 1234):", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Text("• Paciente: pedro", fontSize = 11.sp)
-                        Text("• Tecnólogo: tecno", fontSize = 11.sp)
-                        Text("• Médico: medico", fontSize = 11.sp)
-                        Text("• Administrador: admin", fontSize = 11.sp)
+                        Text("🔑 Accesos Directos (Clave: 1234):", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = azulHeader)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("• pedro → Paciente (Pedro Gómez)", fontSize = 11.sp)
+                        Text("• tecno → Tecnólogo (Registrar examen)", fontSize = 11.sp)
+                        Text("• medico → Médico (Validar y firmar)", fontSize = 11.sp)
+                        Text("• admin → Administrador (Dashboard KPIs)", fontSize = 11.sp)
                     }
                 }
 
@@ -73,6 +78,7 @@ fun DashboardScreen(
                     onValueChange = { viewModel.onUsuarioTextoChange(it) },
                     label = { Text("Usuario") },
                     isError = uiState.errorLogin != null,
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                 )
 
@@ -82,7 +88,8 @@ fun DashboardScreen(
                     label = { Text("Contraseña") },
                     visualTransformation = PasswordVisualTransformation(),
                     isError = uiState.errorLogin != null,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                 )
 
                 if (uiState.errorLogin != null) {
@@ -99,12 +106,12 @@ fun DashboardScreen(
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = azulHeader)
                 ) {
-                    Text("Ingresar")
+                    Text("Iniciar Sesión", fontSize = 16.sp)
                 }
             }
         }
     } else {
-        // Vista 2: Paneles por Rol
+        // Vista 2: Dashboards por Rol
         val rol = uiState.rolSeleccionado
 
         Scaffold(
@@ -119,9 +126,9 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 when (rol) {
                     RolUsuario.PACIENTE -> {
@@ -130,15 +137,16 @@ fun DashboardScreen(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Portal de Paciente: Pedro Gómez", fontWeight = FontWeight.Bold, color = azulHeader)
+                                Text("Portal del Paciente: Pedro Gómez", fontWeight = FontWeight.Bold, color = azulHeader)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Revisión exclusiva de sus exámenes oftálmicos registrados.", fontSize = 13.sp)
+                                Text("Consulte el estado de sus atenciones registradas.", fontSize = 13.sp)
                             }
                         }
 
-                        OutlinedButton(
+                        Button(
                             onClick = onNavegarHistorial,
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = azulHeader)
                         ) {
                             Text("Consultar Mis Exámenes")
                         }
@@ -150,9 +158,9 @@ fun DashboardScreen(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Módulo Tecnólogo", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                                Text("Módulo Tecnólogo Operativo", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Registrar exámenes en terreno con fecha y captura de cámara.", fontSize = 13.sp)
+                                Text("Captura en terreno con cámara y selector de fecha nativo.", fontSize = 13.sp)
                             }
                         }
 
@@ -180,57 +188,133 @@ fun DashboardScreen(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Módulo Médico", fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A))
+                                Text("Módulo Médico Evaluador", fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A))
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Revisar exámenes pendientes y firmar/validar diagnósticos.", fontSize = 13.sp)
+                                Text("Revisión de exámenes pendientes y firma de diagnósticos.", fontSize = 13.sp)
                             }
                         }
 
                         Button(
-                            onClick = onNavegarFormulario,
+                            onClick = onNavegarHistorial,
                             modifier = Modifier.fillMaxWidth().height(50.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6A1B9A))
                         ) {
-                            Text("Ingresar Diagnóstico / Examen")
+                            Text("Validar y Firmar Exámenes")
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
                         OutlinedButton(
-                            onClick = onNavegarHistorial,
+                            onClick = onNavegarFormulario,
                             modifier = Modifier.fillMaxWidth().height(50.dp)
                         ) {
-                            Text("Validar Exámenes y Diagnósticos")
+                            Text("Ingresar Diagnóstico / Examen")
                         }
                     }
 
                     RolUsuario.ADMINISTRADOR -> {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3CD)),
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
+                        // DASHBOARD DE ADMINISTRADOR (KPIs + Avance + Acciones)
+                        Text(
+                            text = "Resumen del Operativo VcM",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = azulHeader,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                        )
+
+                        // 1. Tarjetas KPI
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Panel de Administración VcM", fontWeight = FontWeight.Bold, color = Color(0xFF856404))
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("Supervisión global de registros y trazabilidad del operativo.", fontSize = 13.sp)
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Total", fontSize = 11.sp, color = Color.Gray)
+                                    Text("${uiState.totalExamenes}", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = azulHeader)
+                                    Text("Exámenes", fontSize = 10.sp, color = Color.Gray)
+                                }
+                            }
+
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3CD))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Pendientes", fontSize = 11.sp, color = Color.Gray)
+                                    Text("${uiState.totalPendientes}", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF856404))
+                                    Text("Por Firmar", fontSize = 10.sp, color = Color.Gray)
+                                }
+                            }
+
+                            Card(
+                                modifier = Modifier.weight(1f),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text("Validados", fontSize = 11.sp, color = Color.Gray)
+                                    Text("${uiState.totalValidados}", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                                    Text("Con Firmas", fontSize = 10.sp, color = Color.Gray)
+                                }
                             }
                         }
 
-                        Button(
-                            onClick = onNavegarFormulario,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = azulHeader)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // 2. Barra de Avance
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = Color.White),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
-                            Text("Registrar Examen (Superusuario)")
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Avance de Trazabilidad VcM", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                    Text("${(uiState.porcentajeAvance * 100).toInt()}%", fontWeight = FontWeight.Bold, color = azulHeader, fontSize = 13.sp)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LinearProgressIndicator(
+                                    progress = { uiState.porcentajeAvance },
+                                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                                    color = Color(0xFF2E7D32),
+                                    trackColor = Color(0xFFE0E0E0),
+                                )
+                            }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Text(
+                            text = "Acciones de Control",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = azulHeader,
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                        )
+
+                        // 3. Botones de Control
+                        Button(
+                            onClick = onNavegarHistorial,
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = azulHeader)
+                        ) {
+                            Text("📊 Auditar Historial Completo")
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         OutlinedButton(
-                            onClick = onNavegarHistorial,
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
+                            onClick = onNavegarFormulario,
+                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Auditar Historial Completo")
+                            Text("➕ Registrar Atención como Superusuario")
                         }
                     }
                 }

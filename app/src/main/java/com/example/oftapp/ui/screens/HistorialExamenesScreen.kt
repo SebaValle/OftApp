@@ -25,14 +25,12 @@ fun HistorialExamenesScreen(
     val azulHeader = Color(0xFF0066B2)
     val rol = uiState.rolSeleccionado
 
-    // 1. Filtrado dinámico por Rol: Paciente solo ve sus datos (RUT)
     val examenesPorRol = if (rol == RolUsuario.PACIENTE) {
-        uiState.listaExamenes.filter { it.rut == uiState.usuarioTexto || it.pacienteNombre.contains("Juan", ignoreCase = true) }
+        uiState.listaExamenes.filter { it.rut == uiState.usuarioTexto || it.pacienteNombre.contains("Pedro", ignoreCase = true) }
     } else {
         uiState.listaExamenes
     }
 
-    // 2. Filtrado por barra de búsqueda
     val examenesFiltrados = examenesPorRol.filter {
         it.pacienteNombre.contains(uiState.filtroTexto, ignoreCase = true) ||
                 it.rut.contains(uiState.filtroTexto, ignoreCase = true)
@@ -43,7 +41,7 @@ fun HistorialExamenesScreen(
             TopAppBar(
                 title = {
                     Text(
-                        if (rol == RolUsuario.PACIENTE) "Mis Exámenes Oftalmológicos" else "Historial Clínico de Exámenes",
+                        if (rol == RolUsuario.PACIENTE) "OftApp - Mis Exámenes" else "OftApp - Historial Clínico",
                         color = Color.White
                     )
                 },
@@ -80,7 +78,7 @@ fun HistorialExamenesScreen(
                 )
             } else {
                 Text(
-                    text = "Mostrando registros asociados a su RUT: ${uiState.usuarioTexto}",
+                    text = "Mostrando atenciones asociadas a: Pedro Gómez (RUT: 11.111.111-1)",
                     fontSize = 13.sp,
                     color = Color.Gray,
                     modifier = Modifier.padding(bottom = 12.dp)
@@ -129,7 +127,6 @@ fun HistorialExamenesScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
 
-                            // Estado del examen
                             Text(
                                 text = "Estado: ${examen.observaciones}",
                                 color = if (esValidado) Color(0xFF2E7D32) else Color(0xFF856404),
@@ -137,7 +134,6 @@ fun HistorialExamenesScreen(
                                 fontSize = 13.sp
                             )
 
-                            // Funcionalidad interactiva exclusiva para MÉDICO
                             if (rol == RolUsuario.MEDICO && !esValidado) {
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Button(

@@ -3,48 +3,60 @@ package com.example.oftapp
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.runtime.*
 import com.example.oftapp.data.repository.ExamenRepository
 import com.example.oftapp.ui.screens.DashboardScreen
 import com.example.oftapp.ui.screens.FormularioExamenScreen
 import com.example.oftapp.ui.screens.HistorialExamenesScreen
+import com.example.oftapp.ui.screens.PortalPacienteScreen
 import com.example.oftapp.ui.theme.OftAppTheme
 import com.example.oftapp.ui.viewmodel.ExamenViewModel
-import com.example.oftapp.ui.viewmodel.ExamenViewModelFactory
+import com.example.oftapp.ui.viewmodel.RolUsuario
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val repository = ExamenRepository()
-        val factory = ExamenViewModelFactory(repository)
+        val viewModel = ExamenViewModel(repository)
 
         setContent {
             OftAppTheme {
-                val navController = rememberNavController()
-                val viewModel: ExamenViewModel = viewModel(factory = factory)
+                val uiState by viewModel.uiState.collectAsState()
+                var pantallaActual by remember { mutableStateOf("dashboard") }
 
-                NavHost(navController = navController, startDestination = "dashboard") {
-                    composable("dashboard") {
-                        DashboardScreen(
-                            viewModel = viewModel,
-                            onNavegarFormulario = { navController.navigate("formulario") },
-                            onNavegarHistorial = { navController.navigate("historial") }
-                        )
+                // Redirección según pantalla solicitada
+                when (pantallaActual) {
+                    "dashboard" -> {
+                        // Si es paciente y ya inició sesión, va a su portal
+                        if (uiState.sesionIniciada && uiState.rolSeleccionado == RolUsuario.PACIENTE) {
+                            PortalPacienteScreen(
+                                viewModel = viewModel,
+                                onVerMisExamenes = { pantallaActual = "historial" },
+                                onVolver = {
+                                    viewModel.cerrarSesion()
+                                    pantallaActual = "dashboard"
+                                }
+                            )
+                        } else {
+                            DashboardScreen(
+                                viewModel = viewModel,
+                                onNavegarFormulario = { pantallaActual = "formulario" },
+                                onNavegarHistorial = { pantallaActual = "historial" }
+                            )
+                        }
                     }
-                    composable("formulario") {
+                    "formulario" -> {
                         FormularioExamenScreen(
                             viewModel = viewModel,
-                            onVolver = { navController.popBackStack() }
+                            onGuardadoExitoso = { pantallaActual = "historial" },
+                            onVolver = { pantallaActual = "dashboard" }
                         )
                     }
-                    composable("historial") {
+                    "historial" -> {
                         HistorialExamenesScreen(
                             viewModel = viewModel,
-                            onVolver = { navController.popBackStack() }
+                            onVolver = { pantallaActual = "dashboard" }
                         )
                     }
                 }
