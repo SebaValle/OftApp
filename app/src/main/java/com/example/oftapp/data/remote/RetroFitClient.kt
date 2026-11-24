@@ -8,11 +8,11 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
 
-    // Credenciales cargadas de forma segura desde local.properties via BuildConfig
     val INSFORGE_BASE_URL: String = BuildConfig.INSFORGE_BASE_URL
     val INSFORGE_ANON_KEY: String = BuildConfig.INSFORGE_ANON_KEY
 
     private const val HAPI_FHIR_BASE_URL = "https://hapi.fhir.org/baseR4/"
+    private const val LOINC_BASE_URL = "https://clinicaltables.nlm.nih.gov/"
 
     private val okHttpClient: OkHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {
@@ -43,5 +43,14 @@ object RetrofitClient {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(HapiFhirApiService::class.java)
+    }
+
+    val loincService: LoincApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(LOINC_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(LoincApiService::class.java)
     }
 }

@@ -1,5 +1,6 @@
 package com.example.oftapp.data.remote
 
+import com.google.gson.JsonObject
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -11,4 +12,10 @@ interface HapiFhirApiService {
         @Query("_count") limite: Int = 5,
         @Query("_format") formato: String = "json"
     ): Response<FhirBundleResponse>
+
+    @GET("Patient")
+    suspend fun buscarPacientesPrueba(
+        @Query("_count") limite: Int = 5,
+        @Query("_format") formato: String = "json"
+    ): Response<JsonObject>
 }

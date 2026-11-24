@@ -3,17 +3,26 @@ package com.example.oftapp.data.repository
 import android.content.Context
 import com.example.oftapp.data.local.OftAppDbHelper
 import com.example.oftapp.data.local.entity.ExamenEntity
+import com.example.oftapp.data.remote.HapiFhirApiService
+import com.example.oftapp.data.remote.InsForgeApiService
 import com.example.oftapp.data.remote.InsForgeExamenDto
 import com.example.oftapp.data.remote.InsForgeUsuarioDto
+import com.example.oftapp.data.remote.LoincApiService
 import com.example.oftapp.data.remote.RetrofitClient
 import com.example.oftapp.util.SecurityUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class ExamenRepository(context: Context) {
-
-    private val dbHelper = OftAppDbHelper(context.applicationContext)
+class ExamenRepository(
+    context: Context? = null,
+    private val dbHelper: OftAppDbHelper = OftAppDbHelper(
+        requireNotNull(context) { "Se requiere Context si no se inyecta dbHelper" }.applicationContext
+    ),
+    private val insForgeService: InsForgeApiService = RetrofitClient.insForgeService,
+    private val fhirService: HapiFhirApiService = RetrofitClient.fhirService,
+    private val loincService: LoincApiService = RetrofitClient.loincService
+) {
 
     private val _examenesFlow = MutableStateFlow<List<ExamenEntity>>(emptyList())
     val examenesFlow: StateFlow<List<ExamenEntity>> = _examenesFlow.asStateFlow()
@@ -43,7 +52,7 @@ class ExamenRepository(context: Context) {
             val userLimpio = username.trim().lowercase()
             val passwordEncriptada = SecurityUtils.hashPassword(password)
 
-            val response = RetrofitClient.insForgeService.validarUsuarioRemoto(
+            val response = insForgeService.validarUsuarioRemoto(
                 apiKey = apiKey,
                 bearerToken = bearer,
                 filtroUsername = "eq.$userLimpio",
@@ -79,7 +88,7 @@ class ExamenRepository(context: Context) {
                 rol = rol.uppercase(),
                 activo = true
             )
-            val response = RetrofitClient.insForgeService.crearUsuarioRemoto(
+            val response = insForgeService.crearUsuarioRemoto(
                 apiKey = apiKey,
                 bearerToken = bearer,
                 usuarios = listOf(nuevoUsuario)
@@ -113,7 +122,7 @@ class ExamenRepository(context: Context) {
                     observaciones = examen.observaciones,
                     documentoUri = examen.documentoUri
                 )
-                val response = RetrofitClient.insForgeService.subirExamen(
+                val response = insForgeService.subirExamen(
                     apiKey = apiKey,
                     bearerToken = bearer,
                     examenes = listOf(dto)
@@ -133,15 +142,43 @@ class ExamenRepository(context: Context) {
         }
     }
 
+    suspend fun buscarTerminologiaLoinc(termino: String = "ophthalmology"): List<String> {
+        return try {
+            val response = loincService.buscarCodigosLoinc(termino = termino, limite = 5)
+            if (response.isSuccessful) {
+                val body = response.body() ?: return emptyList()
+                if (body.size() >= 4 && body[3].isJsonArray) {
+                    val filas = body[3].asJsonArray
+                    filas.mapNotNull { item ->
+                        if (item.isJsonArray && item.asJsonArray.size() >= 2) {
+                            val codigo = item.asJsonArray[0].asString
+                            val nombre = item.asJsonArray[1].asString
+                            "LOINC $codigo - $nombre"
+                        } else null
+                    }
+                } else {
+                    emptyList()
+                }
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     suspend fun consultarEjemploFhir(): String {
         return try {
-            val response = RetrofitClient.fhirService.buscarReportesOftalmologicos(limite = 3)
-            if (response.isSuccessful) {
-                val total = response.body()?.total ?: 0
-                val primerTexto = response.body()?.entry?.firstOrNull()?.resource?.code?.text ?: "DiagnosticReport R4"
-                "HAPI FHIR R4 conectado ($total reportes • Ej: $primerTexto)"
+            val responseReportes = fhirService.buscarReportesOftalmologicos(limite = 3)
+            val codigosLoinc = buscarTerminologiaLoinc("visual acuity")
+            val muestraLoinc = codigosLoinc.firstOrNull() ?: "LOINC 70936-0 - Visual acuity"
+
+            if (responseReportes.isSuccessful) {
+                val total = responseReportes.body()?.total ?: 0
+                val primerTexto = responseReportes.body()?.entry?.firstOrNull()?.resource?.code?.text ?: "DiagnosticReport R4"
+                "HAPI FHIR R4 conectado ($total reportes • Ej: $primerTexto)\n🧬 Estándar activo: $muestraLoinc"
             } else {
-                "HAPI FHIR respondió HTTP ${response.code()}"
+                "HAPI FHIR respondió HTTP ${responseReportes.code()}"
             }
         } catch (e: Exception) {
             "Sin conexión a HAPI FHIR (Modo Offline activo)"
