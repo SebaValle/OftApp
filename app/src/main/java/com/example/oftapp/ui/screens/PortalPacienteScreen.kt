@@ -6,6 +6,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,7 +25,15 @@ fun PortalPacienteScreen(
     onNavegarHistorial: () -> Unit,
     onCerrarSesion: () -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     val azulHeader = Color(0xFF0066B2)
+
+    val nombrePaciente = uiState.usuarioNombreCompleto.ifBlank { uiState.usuarioTexto.ifBlank { "Paciente" } }
+    val rutPaciente = uiState.usuarioRut
+
+    val misExamenes = uiState.listaExamenes.filter {
+        it.rut.equals(rutPaciente, ignoreCase = true)
+    }
 
     OftAppScaffold(
         tituloBarra = "OftApp - Portal Paciente",
@@ -38,149 +48,103 @@ fun PortalPacienteScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(20.dp)
+                .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Card(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "Bienvenido/a", fontSize = 14.sp, color = Color.Gray)
-                    Text(text = "Pedro Gómez", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = azulHeader)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Surface(color = Color.White, shape = RoundedCornerShape(8.dp)) {
+                    Text("👤", fontSize = 36.sp)
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column {
                         Text(
-                            text = "RUT: 11.111.111-1",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.DarkGray,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            text = "Hola, $nombrePaciente",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = azulHeader
+                        )
+                        if (rutPaciente.isNotBlank()) {
+                            Text(
+                                text = "RUT: $rutPaciente",
+                                fontSize = 12.sp,
+                                color = Color.DarkGray
+                            )
+                        }
+                        Text(
+                            text = "Tienes ${misExamenes.size} examen(es) registrado(s)",
+                            fontSize = 13.sp,
+                            color = Color.DarkGray
                         )
                     }
                 }
             }
 
-            Text(
-                text = "Tus Opciones",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = azulHeader,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
-            )
-
-            Card(
+            Button(
                 onClick = onNavegarHistorial,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = azulHeader)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                        Text("📋", fontSize = 24.sp)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text("Consultar Mis Exámenes", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("Revisa tus atenciones y resultados", fontSize = 12.sp, color = Color.Gray)
-                        }
-                    }
-                    Text("›", fontSize = 24.sp, color = Color.Gray)
-                }
+                Text("👁️ Ver Mis Resultados y Documentos", fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
 
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Último Examen Validado: Campimetría / OD",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = azulHeader
-                    )
-                    Text(
-                        text = "Fecha: 27/10/2026",
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
+            Spacer(modifier = Modifier.height(20.dp))
 
-                    HorizontalDivider(modifier = Modifier.padding(bottom = 12.dp))
-
-                    Text("Resultados Clínicos Oftalmológicos", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    ParametroFila("Agudeza Visual OD", "20/20")
-                    ParametroFila("Presión Intraocular (PIO)", "14 mmHg")
-                    ParametroFila("Campo Visual Superior", "Normal")
-                    ParametroFila("Sensibilidad al Contraste", "Normal (100%)")
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Surface(
-                        color = Color(0xFFE8F5E9),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("✔", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Examen firmado y validado por el médico tratante.",
-                                fontSize = 11.sp,
-                                color = Color(0xFF2E7D32),
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+            if (misExamenes.isEmpty()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Sin exámenes clínicos aún",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            color = azulHeader
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Cuando el equipo oftalmológico registre un examen asociado a tu RUT ($rutPaciente), aparecerá automáticamente aquí.",
+                            fontSize = 13.sp,
+                            color = Color.DarkGray
+                        )
                     }
                 }
-            }
-
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            } else {
+                Text(
+                    text = "Resumen de tu Última Atención",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = azulHeader,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                )
+                val ultimo = misExamenes.first()
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("🔒", fontSize = 18.sp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Tu información es privada y solo puedes visualizar los registros asociados a tu RUT.",
-                        fontSize = 11.sp,
-                        color = Color.Gray
-                    )
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text(ultimo.tipoExamen, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text("Fecha: ${ultimo.fecha}", fontSize = 12.sp, color = Color.Gray)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = ultimo.observaciones,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (ultimo.observaciones.contains("VALIDADO")) Color(0xFF2E7D32) else Color(0xFF856404)
+                        )
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun ParametroFila(nombre: String, valor: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(text = nombre, fontSize = 12.sp, color = Color.DarkGray, modifier = Modifier.weight(1f))
-        Text(text = valor, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
     }
 }

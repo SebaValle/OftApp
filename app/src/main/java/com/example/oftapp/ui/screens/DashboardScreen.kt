@@ -29,6 +29,24 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val azulHeader = Color(0xFF0066B2)
 
+    var mostrarRegistroPaciente by remember { mutableStateOf(false) }
+    var regNombre by remember { mutableStateOf("") }
+    var regRut by remember { mutableStateOf("") }
+    var regUsuario by remember { mutableStateOf("") }
+    var regPassword by remember { mutableStateOf("") }
+    var regError by remember { mutableStateOf<String?>(null) }
+    var registrandoPaciente by remember { mutableStateOf(false) }
+
+    var mostrarDialogoPersonal by remember { mutableStateOf(false) }
+    var admNombre by remember { mutableStateOf("") }
+    var admRut by remember { mutableStateOf("") }
+    var admUsuario by remember { mutableStateOf("") }
+    var admPassword by remember { mutableStateOf("") }
+    var admRolSeleccionado by remember { mutableStateOf("MEDICO") }
+    var admGuardando by remember { mutableStateOf(false) }
+    var admError by remember { mutableStateOf<String?>(null) }
+    var bannerAdmin by remember { mutableStateOf<String?>(null) }
+
     if (!uiState.sesionIniciada) {
         Scaffold(
             topBar = {
@@ -64,22 +82,8 @@ fun DashboardScreen(
                     text = "Plataforma de Trazabilidad Oftalmológica",
                     fontSize = 14.sp,
                     color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 20.dp)
+                    modifier = Modifier.padding(bottom = 24.dp)
                 )
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text("🔑 Accesos Directos (Clave: 1234):", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = azulHeader)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("• pedro → Paciente (Pedro Gómez)", fontSize = 11.sp)
-                        Text("• tecno → Tecnólogo (Registrar examen)", fontSize = 11.sp)
-                        Text("• medico → Médico (Validar y firmar)", fontSize = 11.sp)
-                        Text("• admin → Administrador (Dashboard KPIs)", fontSize = 11.sp)
-                    }
-                }
 
                 OutlinedTextField(
                     value = uiState.usuarioTexto,
@@ -116,10 +120,109 @@ fun DashboardScreen(
                 ) {
                     Text("Iniciar Sesión", fontSize = 16.sp)
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = {
+                        regNombre = ""
+                        regRut = ""
+                        regUsuario = ""
+                        regPassword = ""
+                        regError = null
+                        mostrarRegistroPaciente = true
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text("¿Eres paciente nuevo? Crear mi cuenta")
+                }
             }
+        }
+
+        if (mostrarRegistroPaciente) {
+            AlertDialog(
+                onDismissRequest = { if (!registrandoPaciente) mostrarRegistroPaciente = false },
+                title = { Text("Registro de Nuevo Paciente", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = regNombre,
+                            onValueChange = { regNombre = it },
+                            label = { Text("Nombre Completo") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = regRut,
+                            onValueChange = { regRut = it },
+                            label = { Text("RUT (ej: 12.345.678-9)") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = regUsuario,
+                            onValueChange = { regUsuario = it },
+                            label = { Text("Nombre de Usuario") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        OutlinedTextField(
+                            value = regPassword,
+                            onValueChange = { regPassword = it },
+                            label = { Text("Contraseña") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        if (regError != null) {
+                            Text(
+                                text = regError ?: "",
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        enabled = !registrandoPaciente,
+                        colors = ButtonDefaults.buttonColors(containerColor = azulHeader),
+                        onClick = {
+                            registrandoPaciente = true
+                            regError = null
+                            viewModel.crearCuentaUsuario(
+                                username = regUsuario,
+                                password = regPassword,
+                                nombreCompleto = regNombre,
+                                rut = regRut,
+                                rol = "PACIENTE",
+                                iniciarSesionAutomatico = true
+                            ) { exito, mensaje ->
+                                registrandoPaciente = false
+                                if (exito) {
+                                    mostrarRegistroPaciente = false
+                                } else {
+                                    regError = mensaje
+                                }
+                            }
+                        }
+                    ) {
+                        Text(if (registrandoPaciente) "Creando..." else "Registrarme")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        enabled = !registrandoPaciente,
+                        onClick = { mostrarRegistroPaciente = false }
+                    ) {
+                        Text("Cancelar")
+                    }
+                }
+            )
         }
     } else {
         val rol = uiState.rolSeleccionado
+        val nombreActual = uiState.usuarioNombreCompleto.ifBlank { uiState.usuarioTexto }
 
         OftAppScaffold(
             tituloBarra = "OftApp - Panel ${rol.name}",
@@ -152,8 +255,8 @@ fun DashboardScreen(
                                 Text("👨‍⚕️", fontSize = 36.sp)
                                 Spacer(modifier = Modifier.width(14.dp))
                                 Column {
-                                    Text("Hola, Tecnólogo", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = azulHeader)
-                                    Text("¿Qué deseas hacer hoy en terreno?", fontSize = 13.sp, color = Color.DarkGray)
+                                    Text("Hola, $nombreActual", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = azulHeader)
+                                    Text("Tecnólogo Médico • RUT: ${uiState.usuarioRut}", fontSize = 12.sp, color = Color.DarkGray)
                                 }
                             }
                         }
@@ -220,8 +323,8 @@ fun DashboardScreen(
                                 Text("🩺", fontSize = 36.sp)
                                 Spacer(modifier = Modifier.width(14.dp))
                                 Column {
-                                    Text("Hola, Dr. Martínez", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF6A1B9A))
-                                    Text("Módulo Médico Evaluador", fontSize = 13.sp, color = Color.DarkGray)
+                                    Text("Hola, $nombreActual", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF6A1B9A))
+                                    Text("Médico Evaluador • RUT: ${uiState.usuarioRut}", fontSize = 12.sp, color = Color.DarkGray)
                                 }
                             }
                         }
@@ -271,7 +374,7 @@ fun DashboardScreen(
 
                     RolUsuario.ADMINISTRADOR -> {
                         Text(
-                            text = "Resumen del Operativo VcM",
+                            text = "Resumen del Operativo VcM ($nombreActual)",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = azulHeader,
@@ -341,6 +444,31 @@ fun DashboardScreen(
                             }
                         }
 
+                        if (bannerAdmin != null) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Surface(
+                                color = Color(0xFFE8F5E9),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = bannerAdmin ?: "",
+                                        color = Color(0xFF2E7D32),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextButton(onClick = { bannerAdmin = null }) {
+                                        Text("OK")
+                                    }
+                                }
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(20.dp))
 
                         Text(
@@ -350,6 +478,25 @@ fun DashboardScreen(
                             color = azulHeader,
                             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                         )
+
+                        Button(
+                            onClick = {
+                                admNombre = ""
+                                admRut = ""
+                                admUsuario = ""
+                                admPassword = ""
+                                admRolSeleccionado = "MEDICO"
+                                admError = null
+                                mostrarDialogoPersonal = true
+                            },
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                        ) {
+                            Text("👥 Crear Médico / Tecnólogo en InsForge", fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         Button(
                             onClick = onNavegarHistorial,
@@ -368,6 +515,102 @@ fun DashboardScreen(
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("➕ Registrar Atención como Superusuario")
+                        }
+
+                        if (mostrarDialogoPersonal) {
+                            AlertDialog(
+                                onDismissRequest = { if (!admGuardando) mostrarDialogoPersonal = false },
+                                title = { Text("Registrar Personal Clínico", fontWeight = FontWeight.Bold) },
+                                text = {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text("Rol asignado:", fontSize = 13.sp)
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            FilterChip(
+                                                selected = admRolSeleccionado == "MEDICO",
+                                                onClick = { admRolSeleccionado = "MEDICO" },
+                                                label = { Text("Médico") }
+                                            )
+                                            FilterChip(
+                                                selected = admRolSeleccionado == "TECNOLOGO",
+                                                onClick = { admRolSeleccionado = "TECNOLOGO" },
+                                                label = { Text("Tecnólogo") }
+                                            )
+                                        }
+                                        OutlinedTextField(
+                                            value = admNombre,
+                                            onValueChange = { admNombre = it },
+                                            label = { Text("Nombre Completo") },
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        OutlinedTextField(
+                                            value = admRut,
+                                            onValueChange = { admRut = it },
+                                            label = { Text("RUT Profesional") },
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        OutlinedTextField(
+                                            value = admUsuario,
+                                            onValueChange = { admUsuario = it },
+                                            label = { Text("Usuario de Acceso") },
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        OutlinedTextField(
+                                            value = admPassword,
+                                            onValueChange = { admPassword = it },
+                                            label = { Text("Contraseña Inicial") },
+                                            visualTransformation = PasswordVisualTransformation(),
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        if (admError != null) {
+                                            Text(
+                                                text = admError ?: "",
+                                                color = MaterialTheme.colorScheme.error,
+                                                fontSize = 12.sp
+                                            )
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    Button(
+                                        enabled = !admGuardando,
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                        onClick = {
+                                            admGuardando = true
+                                            admError = null
+                                            viewModel.crearCuentaUsuario(
+                                                username = admUsuario,
+                                                password = admPassword,
+                                                nombreCompleto = admNombre,
+                                                rut = admRut,
+                                                rol = admRolSeleccionado,
+                                                iniciarSesionAutomatico = false
+                                            ) { exito, mensaje ->
+                                                admGuardando = false
+                                                if (exito) {
+                                                    bannerAdmin = mensaje
+                                                    mostrarDialogoPersonal = false
+                                                } else {
+                                                    admError = mensaje
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Text(if (admGuardando) "Guardando..." else "Crear Usuario")
+                                    }
+                                },
+                                dismissButton = {
+                                    TextButton(
+                                        enabled = !admGuardando,
+                                        onClick = { mostrarDialogoPersonal = false }
+                                    ) {
+                                        Text("Cancelar")
+                                    }
+                                }
+                            )
                         }
                     }
 

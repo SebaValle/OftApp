@@ -1,21 +1,17 @@
 package com.example.oftapp.ui.screens
 
 import android.app.DatePickerDialog
-import android.graphics.Bitmap
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.launch
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,15 +33,24 @@ fun FormularioExamenScreen(
     val context = LocalContext.current
     val azulHeader = Color(0xFF0066B2)
 
-    var fotoCapturada by remember { mutableStateOf<Bitmap?>(null) }
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap ->
-        if (bitmap != null) {
-            fotoCapturada = bitmap
+    // Selector seguro de PDF e Imágenes (Sin permisos de cámara ni crashes)
+    val selectorDocumentoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (_: Exception) {
+                // Algunos proveedores de archivos temporales no requieren persistencia
+            }
+            viewModel.onDocumentoSeleccionado(uri.toString())
         }
     }
 
+    // Calendario conectado directamente a uiState.fecha
     val calendar = Calendar.getInstance()
     val datePickerDialog = DatePickerDialog(
         context,
@@ -146,6 +151,7 @@ fun FormularioExamenScreen(
                 }
             }
 
+            // Botón de Calendario
             OutlinedButton(
                 onClick = { datePickerDialog.show() },
                 modifier = Modifier
@@ -153,7 +159,7 @@ fun FormularioExamenScreen(
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("📅 Fecha de Atención: ${uiState.fecha}")
+                Text("📅 Fecha Agendada: ${uiState.fecha}")
             }
 
             OutlinedTextField(
@@ -165,34 +171,39 @@ fun FormularioExamenScreen(
                     .height(100.dp)
             )
 
+            // Botón para adjuntar PDF o Imagen Clínica
             OutlinedButton(
-                onClick = { cameraLauncher.launch() },
+                onClick = {
+                    selectorDocumentoLauncher.launch(arrayOf("application/pdf", "image/*"))
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("📷 Capturar Evidencia del Examen")
+                Text("📄 Adjuntar Examen (PDF o Imagen)")
             }
 
-            if (fotoCapturada != null) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+            // Confirmación visual del archivo adjunto
+            if (uiState.documentoUri != null) {
+                Surface(
+                    color = Color(0xFFE8F5E9),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(
+                    Row(
                         modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Imagen Adjunta:", fontSize = 12.sp, color = Color.Gray)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Image(
-                            bitmap = fotoCapturada!!.asImageBitmap(),
-                            contentDescription = "Foto clínica capturada",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(160.dp)
+                        Text(
+                            text = "✔ Documento adjunto listo para guardar",
+                            color = Color(0xFF2E7D32),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
                         )
+                        TextButton(onClick = { viewModel.onDocumentoSeleccionado(null) }) {
+                            Text("Quitar", color = Color.Red, fontSize = 12.sp)
+                        }
                     }
                 }
             }

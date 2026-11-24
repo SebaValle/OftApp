@@ -1,17 +1,42 @@
 package com.example.oftapp.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.oftapp.data.local.AccesibilidadPreferences
 import com.example.oftapp.data.local.entity.ExamenEntity
 import com.example.oftapp.data.repository.ExamenRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class ExamenViewModel(private val repository: ExamenRepository) : ViewModel() {
+class ExamenViewModel(
+    private val repository: ExamenRepository,
+    private val accesibilidadPrefs: AccesibilidadPreferences
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ExamenUiState())
     val uiState: StateFlow<ExamenUiState> = _uiState.asStateFlow()
+
+    private val _sincronizando = MutableStateFlow(false)
+    val sincronizando: StateFlow<Boolean> = _sincronizando.asStateFlow()
+
+    private val _mensajeSync = MutableStateFlow<String?>(null)
+    val mensajeSync: StateFlow<String?> = _mensajeSync.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            repository.examenesFlow.collect { listaDb ->
+                _uiState.update { it.copy(listaExamenes = listaDb) }
+            }
+        }
+        viewModelScope.launch {
+            accesibilidadPrefs.escalaTextoFlow.collect { escalaGuardada ->
+                _uiState.update { it.copy(escalaTexto = escalaGuardada) }
+            }
+        }
+    }
 
     fun onUsuarioTextoChange(texto: String) {
         _uiState.update { it.copy(usuarioTexto = texto, errorLogin = null) }
@@ -25,28 +50,78 @@ class ExamenViewModel(private val repository: ExamenRepository) : ViewModel() {
         val user = _uiState.value.usuarioTexto.trim().lowercase()
         val pass = _uiState.value.passwordTexto.trim()
 
-        if (pass != "1234") {
-            _uiState.update { it.copy(errorLogin = "Contraseña incorrecta (usa 1234)") }
+        if (user.isBlank() || pass.isBlank()) {
+            _uiState.update { it.copy(errorLogin = "Ingresa usuario y contraseña") }
             return
         }
 
-        val rolInferido = when (user) {
-            "pedro" -> RolUsuario.PACIENTE
-            "tecno" -> RolUsuario.TECNOLOGO
-            "medico" -> RolUsuario.MEDICO
-            "admin" -> RolUsuario.ADMINISTRADOR
-            else -> {
-                _uiState.update { it.copy(errorLogin = "Usuario no válido (usa: pedro, tecno, medico o admin)") }
-                return
+        viewModelScope.launch {
+            val usuarioNube = repository.autenticarUsuarioRemoto(user, pass)
+
+            if (usuarioNube != null) {
+                val rolInferido = when (usuarioNube.rol.uppercase()) {
+                    "PACIENTE" -> RolUsuario.PACIENTE
+                    "TECNOLOGO" -> RolUsuario.TECNOLOGO
+                    "MEDICO" -> RolUsuario.MEDICO
+                    "ADMINISTRADOR" -> RolUsuario.ADMINISTRADOR
+                    else -> RolUsuario.PACIENTE
+                }
+                _uiState.update {
+                    it.copy(
+                        sesionIniciada = true,
+                        rolSeleccionado = rolInferido,
+                        usuarioNombreCompleto = usuarioNube.nombreCompleto,
+                        usuarioRut = usuarioNube.rut,
+                        errorLogin = null
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(errorLogin = "Usuario o contraseña incorrectos (verifica tu conexión)")
+                }
             }
         }
+    }
 
-        _uiState.update {
-            it.copy(
-                sesionIniciada = true,
-                rolSeleccionado = rolInferido,
-                errorLogin = null
+    fun crearCuentaUsuario(
+        username: String,
+        password: String,
+        nombreCompleto: String,
+        rut: String,
+        rol: String,
+        iniciarSesionAutomatico: Boolean = false,
+        onResultado: (Boolean, String) -> Unit
+    ) {
+        if (username.isBlank() || password.isBlank() || nombreCompleto.isBlank() || rut.isBlank()) {
+            onResultado(false, "Completa todos los campos obligatorios.")
+            return
+        }
+
+        viewModelScope.launch {
+            val resultado = repository.registrarUsuarioEnInsForge(
+                username = username,
+                password = password,
+                nombreCompleto = nombreCompleto,
+                rut = rut,
+                rol = rol
             )
+            resultado.onSuccess { usuarioCreado ->
+                if (iniciarSesionAutomatico) {
+                    _uiState.update {
+                        it.copy(
+                            sesionIniciada = true,
+                            usuarioTexto = usuarioCreado.username,
+                            usuarioNombreCompleto = usuarioCreado.nombreCompleto,
+                            usuarioRut = usuarioCreado.rut,
+                            rolSeleccionado = RolUsuario.PACIENTE,
+                            errorLogin = null
+                        )
+                    }
+                }
+                onResultado(true, "Cuenta '${usuarioCreado.username}' (${usuarioCreado.rol}) creada exitosamente.")
+            }.onFailure { error ->
+                onResultado(false, "Error al registrar: ${error.localizedMessage}")
+            }
         }
     }
 
@@ -56,8 +131,17 @@ class ExamenViewModel(private val repository: ExamenRepository) : ViewModel() {
                 sesionIniciada = false,
                 usuarioTexto = "",
                 passwordTexto = "",
+                usuarioNombreCompleto = "",
+                usuarioRut = "",
                 errorLogin = null
             )
+        }
+    }
+
+    fun onCambiarEscalaTexto(nuevaEscala: Float) {
+        _uiState.update { it.copy(escalaTexto = nuevaEscala) }
+        viewModelScope.launch {
+            accesibilidadPrefs.guardarEscalaTexto(nuevaEscala)
         }
     }
 
@@ -81,6 +165,10 @@ class ExamenViewModel(private val repository: ExamenRepository) : ViewModel() {
         _uiState.update { it.copy(observaciones = obs) }
     }
 
+    fun onDocumentoSeleccionado(uri: String?) {
+        _uiState.update { it.copy(documentoUri = uri) }
+    }
+
     fun onFiltroChange(filtro: String) {
         _uiState.update { it.copy(filtroTexto = filtro) }
     }
@@ -92,41 +180,52 @@ class ExamenViewModel(private val repository: ExamenRepository) : ViewModel() {
             return
         }
 
-        val nuevoId = (estadoActual.listaExamenes.maxOfOrNull { it.id } ?: 0) + 1
         val nuevoExamen = ExamenEntity(
-            id = nuevoId,
             pacienteNombre = estadoActual.pacienteNombre,
-            rut = estadoActual.rut.ifBlank { "11.111.111-1" },
+            rut = estadoActual.rut.ifBlank { "Sin RUT" },
             tipoExamen = estadoActual.tipoExamen,
             fecha = estadoActual.fecha,
-            observaciones = estadoActual.observaciones.ifBlank { "PENDIENTE DE VALIDACIÓN" }
+            observaciones = estadoActual.observaciones.ifBlank { "PENDIENTE DE VALIDACIÓN" },
+            documentoUri = estadoActual.documentoUri,
+            sincronizado = false
         )
+
+        repository.agregarExamen(nuevoExamen)
 
         _uiState.update {
             it.copy(
-                listaExamenes = listOf(nuevoExamen) + it.listaExamenes,
                 pacienteNombre = "",
                 rut = "",
-                observaciones = ""
+                observaciones = "",
+                documentoUri = null
             )
         }
         onExito()
     }
 
     fun validarExamen(idExamen: Int) {
-        _uiState.update { estado ->
-            val listaActualizada = estado.listaExamenes.map { examen ->
-                if (examen.id == idExamen) {
-                    examen.copy(observaciones = "VALIDADO POR MÉDICO")
-                } else {
-                    examen
-                }
+        repository.validarExamen(idExamen)
+    }
+
+    fun sincronizarConNube() {
+        if (_sincronizando.value) return
+        viewModelScope.launch {
+            _sincronizando.value = true
+            _mensajeSync.value = "Sincronizando con InsForge y consultando HAPI FHIR..."
+
+            val resultadoSync = repository.sincronizarPendientesConInsForge()
+            val estadoFhir = repository.consultarEjemploFhir()
+
+            resultadoSync.onSuccess { cantidad ->
+                _mensajeSync.value = "☁️ InsForge: $cantidad examen(es) subido(s).\n🏥 $estadoFhir"
+            }.onFailure { error ->
+                _mensajeSync.value = "⚠️ Modo Offline: No se pudo conectar con InsForge (${error.localizedMessage ?: "sin red"})."
             }
-            estado.copy(listaExamenes = listaActualizada)
+            _sincronizando.value = false
         }
     }
 
-    fun onCambiarEscalaTexto(nuevaEscala: Float) {
-        _uiState.update { it.copy(escalaTexto = nuevaEscala) }
+    fun limpiarMensajeSync() {
+        _mensajeSync.value = null
     }
 }

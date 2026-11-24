@@ -6,5 +6,7 @@ data class ExamenEntity(
     val rut: String,
     val tipoExamen: String,
     val fecha: String,
-    val observaciones: String
+    val observaciones: String,
+    val documentoUri: String? = null,
+    val sincronizado: Boolean = false
 )
