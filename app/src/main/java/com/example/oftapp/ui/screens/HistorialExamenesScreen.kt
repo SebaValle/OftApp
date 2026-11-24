@@ -3,6 +3,7 @@ package com.example.oftapp.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -12,14 +13,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.oftapp.ui.components.OftAppScaffold
 import com.example.oftapp.ui.viewmodel.ExamenViewModel
 import com.example.oftapp.ui.viewmodel.RolUsuario
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistorialExamenesScreen(
     viewModel: ExamenViewModel,
-    onVolver: () -> Unit
+    onNavegarInicio: () -> Unit,
+    onNavegarFormulario: () -> Unit,
+    onNavegarHistorial: () -> Unit,
+    onCerrarSesion: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val azulHeader = Color(0xFF0066B2)
@@ -36,28 +40,24 @@ fun HistorialExamenesScreen(
                 it.rut.contains(uiState.filtroTexto, ignoreCase = true)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        if (rol == RolUsuario.PACIENTE) "OftApp - Mis Exámenes" else "OftApp - Historial Clínico",
-                        color = Color.White
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = azulHeader)
-            )
-        },
+    OftAppScaffold(
+        tituloBarra = if (rol == RolUsuario.PACIENTE) "OftApp - Mis Exámenes" else "OftApp - Historial",
+        viewModel = viewModel,
+        pantallaActual = "historial",
+        onNavegarInicio = onNavegarInicio,
+        onNavegarFormulario = onNavegarFormulario,
+        onNavegarHistorial = onNavegarHistorial,
+        onCerrarSesion = onCerrarSesion,
         bottomBar = {
             Button(
-                onClick = onVolver,
+                onClick = onNavegarInicio,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
-                    .height(50.dp),
+                    .height(52.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = azulHeader)
             ) {
-                Text("Volver al Dashboard")
+                Text("Volver al Inicio")
             }
         }
     ) { padding ->
@@ -67,6 +67,22 @@ fun HistorialExamenesScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
+            if (rol == RolUsuario.MEDICO) {
+                Surface(
+                    color = Color(0xFFF3E5F5),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                ) {
+                    Text(
+                        text = "Pendientes por validar: ${uiState.totalPendientes} | Validados: ${uiState.totalValidados}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF6A1B9A),
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
+            }
+
             if (rol != RolUsuario.PACIENTE) {
                 OutlinedTextField(
                     value = uiState.filtroTexto,
@@ -105,7 +121,8 @@ fun HistorialExamenesScreen(
                                 Text(
                                     text = examen.pacienteNombre,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
+                                    fontSize = 16.sp,
+                                    modifier = Modifier.weight(1f)
                                 )
                                 Text(
                                     text = examen.fecha,
@@ -139,7 +156,7 @@ fun HistorialExamenesScreen(
                                 Button(
                                     onClick = { viewModel.validarExamen(examen.id) },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth().height(48.dp)
                                 ) {
                                     Text("✔ Validar y Firmar Examen")
                                 }

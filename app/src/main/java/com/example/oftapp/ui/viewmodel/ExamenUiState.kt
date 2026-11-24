@@ -15,6 +15,7 @@ data class ExamenUiState(
     val usuarioTexto: String = "",
     val passwordTexto: String = "",
     val errorLogin: String? = null,
+    val escalaTexto: Float = 1.0f, // 1.0f = Normal, 1.25f = Grande, 1.5f = Extra Grande
     val pacienteNombre: String = "",
     val rut: String = "",
     val tipoExamen: String = "Campimetría / OD",
@@ -30,7 +31,6 @@ data class ExamenUiState(
     ),
     val filtroTexto: String = ""
 ) {
-    // Métricas calculadas dinámicamente para el Dashboard de Admin
     val totalExamenes: Int get() = listaExamenes.size
     val totalValidados: Int get() = listaExamenes.count { it.observaciones.contains("VALIDADO", ignoreCase = true) }
     val totalPendientes: Int get() = listaExamenes.count { !it.observaciones.contains("VALIDADO", ignoreCase = true) }

@@ -5,32 +5,34 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.oftapp.ui.components.OftAppScaffold
 import com.example.oftapp.ui.viewmodel.ExamenViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PortalPacienteScreen(
     viewModel: ExamenViewModel,
-    onVerMisExamenes: () -> Unit,
-    onVolver: () -> Unit
+    onNavegarInicio: () -> Unit,
+    onNavegarFormulario: () -> Unit,
+    onNavegarHistorial: () -> Unit,
+    onCerrarSesion: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
     val azulHeader = Color(0xFF0066B2)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("OftApp - Portal del Paciente", color = Color.White) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = azulHeader)
-            )
-        }
+    OftAppScaffold(
+        tituloBarra = "OftApp - Portal Paciente",
+        viewModel = viewModel,
+        pantallaActual = "dashboard",
+        onNavegarInicio = onNavegarInicio,
+        onNavegarFormulario = onNavegarFormulario,
+        onNavegarHistorial = onNavegarHistorial,
+        onCerrarSesion = onCerrarSesion
     ) { padding ->
         Column(
             modifier = Modifier
@@ -40,11 +42,8 @@ fun PortalPacienteScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header del Paciente estilo mockup
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -52,22 +51,10 @@ fun PortalPacienteScreen(
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Bienvenido/a",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = "Pedro Gómez",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = azulHeader
-                    )
+                    Text(text = "Bienvenido/a", fontSize = 14.sp, color = Color.Gray)
+                    Text(text = "Pedro Gómez", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = azulHeader)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Surface(
-                        color = Color.White,
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
+                    Surface(color = Color.White, shape = RoundedCornerShape(8.dp)) {
                         Text(
                             text = "RUT: 11.111.111-1",
                             fontSize = 12.sp,
@@ -84,29 +71,22 @@ fun PortalPacienteScreen(
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp,
                 color = azulHeader,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
             )
 
-            // Botón de acceso a Mis Exámenes
             Card(
-                onClick = onVerMisExamenes,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                onClick = onNavegarHistorial,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                         Text("📋", fontSize = 24.sp)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
@@ -118,11 +98,8 @@ fun PortalPacienteScreen(
                 }
             }
 
-            // Muestra de parámetros oftalmológicos en pantalla según el mockup
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 shape = RoundedCornerShape(12.dp)
@@ -175,7 +152,6 @@ fun PortalPacienteScreen(
                 }
             }
 
-            // Nota de privacidad de datos
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
                 modifier = Modifier.fillMaxWidth(),
@@ -194,12 +170,6 @@ fun PortalPacienteScreen(
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            TextButton(onClick = onVolver) {
-                Text("Volver al Inicio", color = Color.Gray)
-            }
         }
     }
 }
@@ -207,12 +177,10 @@ fun PortalPacienteScreen(
 @Composable
 fun ParametroFila(nombre: String, valor: String) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = nombre, fontSize = 12.sp, color = Color.DarkGray)
+        Text(text = nombre, fontSize = 12.sp, color = Color.DarkGray, modifier = Modifier.weight(1f))
         Text(text = valor, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
     }
 }

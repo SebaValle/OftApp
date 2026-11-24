@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.oftapp.ui.components.OftAppScaffold
 import com.example.oftapp.ui.viewmodel.ExamenViewModel
 import com.example.oftapp.ui.viewmodel.RolUsuario
 
@@ -20,18 +21,31 @@ import com.example.oftapp.ui.viewmodel.RolUsuario
 @Composable
 fun DashboardScreen(
     viewModel: ExamenViewModel,
+    onNavegarInicio: () -> Unit,
     onNavegarFormulario: () -> Unit,
-    onNavegarHistorial: () -> Unit
+    onNavegarHistorial: () -> Unit,
+    onCerrarSesion: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val azulHeader = Color(0xFF0066B2)
 
     if (!uiState.sesionIniciada) {
-        // Vista 1: Login Directo
         Scaffold(
             topBar = {
                 TopAppBar(
                     title = { Text("OftApp - Autenticación VcM", color = Color.White) },
+                    actions = {
+                        TextButton(onClick = {
+                            val siguiente = when (uiState.escalaTexto) {
+                                1.0f -> 1.25f
+                                1.25f -> 1.5f
+                                else -> 1.0f
+                            }
+                            viewModel.onCambiarEscalaTexto(siguiente)
+                        }) {
+                            Text("A+", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = azulHeader)
                 )
             }
@@ -40,16 +54,12 @@ fun DashboardScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(24.dp),
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = "OftApp VcM",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = azulHeader
-                )
+                Text(text = "OftApp VcM", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = azulHeader)
                 Text(
                     text = "Plataforma de Trazabilidad Oftalmológica",
                     fontSize = 14.sp,
@@ -59,9 +69,7 @@ fun DashboardScreen(
 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 20.dp)
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text("🔑 Accesos Directos (Clave: 1234):", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = azulHeader)
@@ -103,7 +111,7 @@ fun DashboardScreen(
 
                 Button(
                     onClick = { viewModel.iniciarSesion() },
-                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = azulHeader)
                 ) {
                     Text("Iniciar Sesión", fontSize = 16.sp)
@@ -111,16 +119,16 @@ fun DashboardScreen(
             }
         }
     } else {
-        // Vista 2: Dashboards por Rol
         val rol = uiState.rolSeleccionado
 
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("OftApp - Panel ${rol.name}", color = Color.White) },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = azulHeader)
-                )
-            }
+        OftAppScaffold(
+            tituloBarra = "OftApp - Panel ${rol.name}",
+            viewModel = viewModel,
+            pantallaActual = "dashboard",
+            onNavegarInicio = onNavegarInicio,
+            onNavegarFormulario = onNavegarFormulario,
+            onNavegarHistorial = onNavegarHistorial,
+            onCerrarSesion = onCerrarSesion
         ) { padding ->
             Column(
                 modifier = Modifier
@@ -131,89 +139,137 @@ fun DashboardScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 when (rol) {
-                    RolUsuario.PACIENTE -> {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Portal del Paciente: Pedro Gómez", fontWeight = FontWeight.Bold, color = azulHeader)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("Consulte el estado de sus atenciones registradas.", fontSize = 13.sp)
-                            }
-                        }
-
-                        Button(
-                            onClick = onNavegarHistorial,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = azulHeader)
-                        ) {
-                            Text("Consultar Mis Exámenes")
-                        }
-                    }
-
                     RolUsuario.TECNOLOGO -> {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Módulo Tecnólogo Operativo", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("Captura en terreno con cámara y selector de fecha nativo.", fontSize = 13.sp)
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("👨‍⚕️", fontSize = 36.sp)
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column {
+                                    Text("Hola, Tecnólogo", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = azulHeader)
+                                    Text("¿Qué deseas hacer hoy en terreno?", fontSize = 13.sp, color = Color.DarkGray)
+                                }
                             }
                         }
 
                         Button(
                             onClick = onNavegarFormulario,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = azulHeader)
                         ) {
-                            Text("Registrar Nuevo Examen")
+                            Text("➕ Registrar Nuevo Examen", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
                         OutlinedButton(
                             onClick = onNavegarHistorial,
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Consultar Historial Técnico")
+                            Text("📋 Consultar Historial Técnico")
+                        }
+
+                        val ultimoExamen = uiState.listaExamenes.firstOrNull()
+                        if (ultimoExamen != null) {
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Text(
+                                text = "Última Atención Registrada",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = azulHeader,
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                            )
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Text(ultimoExamen.pacienteNombre, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                    Text("Examen: ${ultimoExamen.tipoExamen} • ${ultimoExamen.fecha}", fontSize = 12.sp, color = Color.Gray)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = ultimoExamen.observaciones,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (ultimoExamen.observaciones.contains("VALIDADO")) Color(0xFF2E7D32) else Color(0xFF856404)
+                                    )
+                                }
+                            }
                         }
                     }
 
                     RolUsuario.MEDICO -> {
                         Card(
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5)),
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Módulo Médico Evaluador", fontWeight = FontWeight.Bold, color = Color(0xFF6A1B9A))
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("Revisión de exámenes pendientes y firma de diagnósticos.", fontSize = 13.sp)
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("🩺", fontSize = 36.sp)
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column {
+                                    Text("Hola, Dr. Martínez", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF6A1B9A))
+                                    Text("Módulo Médico Evaluador", fontSize = 13.sp, color = Color.DarkGray)
+                                }
+                            }
+                        }
+
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (uiState.totalPendientes > 0) Color(0xFFFFF3CD) else Color(0xFFE8F5E9)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (uiState.totalPendientes > 0)
+                                        "⚠️ Tienes ${uiState.totalPendientes} examen(es) pendiente(s) de firma"
+                                    else
+                                        "✔ Todos los exámenes están validados",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    color = if (uiState.totalPendientes > 0) Color(0xFF856404) else Color(0xFF2E7D32)
+                                )
                             }
                         }
 
                         Button(
                             onClick = onNavegarHistorial,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6A1B9A))
                         ) {
-                            Text("Validar y Firmar Exámenes")
+                            Text("✔ Validar y Firmar Exámenes (${uiState.totalPendientes})", fontSize = 15.sp, fontWeight = FontWeight.Bold)
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
                         OutlinedButton(
                             onClick = onNavegarFormulario,
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Ingresar Diagnóstico / Examen")
+                            Text("📝 Ingresar Diagnóstico / Examen")
                         }
                     }
 
                     RolUsuario.ADMINISTRADOR -> {
-                        // DASHBOARD DE ADMINISTRADOR (KPIs + Avance + Acciones)
                         Text(
                             text = "Resumen del Operativo VcM",
                             fontWeight = FontWeight.Bold,
@@ -222,7 +278,6 @@ fun DashboardScreen(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                         )
 
-                        // 1. Tarjetas KPI
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -263,7 +318,6 @@ fun DashboardScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // 2. Barra de Avance
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -297,10 +351,9 @@ fun DashboardScreen(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                         )
 
-                        // 3. Botones de Control
                         Button(
                             onClick = onNavegarHistorial,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = azulHeader)
                         ) {
@@ -311,20 +364,14 @@ fun DashboardScreen(
 
                         OutlinedButton(
                             onClick = onNavegarFormulario,
-                            modifier = Modifier.fillMaxWidth().height(50.dp),
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text("➕ Registrar Atención como Superusuario")
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(28.dp))
-
-                TextButton(
-                    onClick = { viewModel.cerrarSesion() }
-                ) {
-                    Text("Cerrar Sesión", color = Color.Red, fontSize = 16.sp)
+                    else -> {}
                 }
             }
         }

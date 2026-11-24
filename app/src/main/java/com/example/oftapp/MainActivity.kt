@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import com.example.oftapp.data.repository.ExamenRepository
 import com.example.oftapp.ui.screens.DashboardScreen
 import com.example.oftapp.ui.screens.FormularioExamenScreen
@@ -24,40 +26,53 @@ class MainActivity : ComponentActivity() {
             OftAppTheme {
                 val uiState by viewModel.uiState.collectAsState()
                 var pantallaActual by remember { mutableStateOf("dashboard") }
+                val densidadActual = LocalDensity.current
 
-                // Redirección según pantalla solicitada
-                when (pantallaActual) {
-                    "dashboard" -> {
-                        // Si es paciente y ya inició sesión, va a su portal
-                        if (uiState.sesionIniciada && uiState.rolSeleccionado == RolUsuario.PACIENTE) {
-                            PortalPacienteScreen(
+                // Escala global de fuente para toda la aplicación
+                CompositionLocalProvider(
+                    LocalDensity provides Density(
+                        density = densidadActual.density,
+                        fontScale = densidadActual.fontScale * uiState.escalaTexto
+                    )
+                ) {
+                    when (pantallaActual) {
+                        "dashboard" -> {
+                            if (uiState.sesionIniciada && uiState.rolSeleccionado == RolUsuario.PACIENTE) {
+                                PortalPacienteScreen(
+                                    viewModel = viewModel,
+                                    onNavegarInicio = { pantallaActual = "dashboard" },
+                                    onNavegarFormulario = { pantallaActual = "formulario" },
+                                    onNavegarHistorial = { pantallaActual = "historial" },
+                                    onCerrarSesion = { pantallaActual = "dashboard" }
+                                )
+                            } else {
+                                DashboardScreen(
+                                    viewModel = viewModel,
+                                    onNavegarInicio = { pantallaActual = "dashboard" },
+                                    onNavegarFormulario = { pantallaActual = "formulario" },
+                                    onNavegarHistorial = { pantallaActual = "historial" },
+                                    onCerrarSesion = { pantallaActual = "dashboard" }
+                                )
+                            }
+                        }
+                        "formulario" -> {
+                            FormularioExamenScreen(
                                 viewModel = viewModel,
-                                onVerMisExamenes = { pantallaActual = "historial" },
-                                onVolver = {
-                                    viewModel.cerrarSesion()
-                                    pantallaActual = "dashboard"
-                                }
-                            )
-                        } else {
-                            DashboardScreen(
-                                viewModel = viewModel,
+                                onNavegarInicio = { pantallaActual = "dashboard" },
                                 onNavegarFormulario = { pantallaActual = "formulario" },
-                                onNavegarHistorial = { pantallaActual = "historial" }
+                                onNavegarHistorial = { pantallaActual = "historial" },
+                                onCerrarSesion = { pantallaActual = "dashboard" }
                             )
                         }
-                    }
-                    "formulario" -> {
-                        FormularioExamenScreen(
-                            viewModel = viewModel,
-                            onGuardadoExitoso = { pantallaActual = "historial" },
-                            onVolver = { pantallaActual = "dashboard" }
-                        )
-                    }
-                    "historial" -> {
-                        HistorialExamenesScreen(
-                            viewModel = viewModel,
-                            onVolver = { pantallaActual = "dashboard" }
-                        )
+                        "historial" -> {
+                            HistorialExamenesScreen(
+                                viewModel = viewModel,
+                                onNavegarInicio = { pantallaActual = "dashboard" },
+                                onNavegarFormulario = { pantallaActual = "formulario" },
+                                onNavegarHistorial = { pantallaActual = "historial" },
+                                onCerrarSesion = { pantallaActual = "dashboard" }
+                            )
+                        }
                     }
                 }
             }
