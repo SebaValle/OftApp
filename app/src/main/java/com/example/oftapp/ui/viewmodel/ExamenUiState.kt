@@ -18,6 +18,7 @@ data class ExamenUiState(
     val rolSeleccionado: RolUsuario = RolUsuario.PACIENTE,
     val errorLogin: String? = null,
     val escalaTexto: Float = 1.0f,
+    val altoContraste: Boolean = false,
 
     val pacienteNombre: String = "",
     val errorNombre: String? = null,

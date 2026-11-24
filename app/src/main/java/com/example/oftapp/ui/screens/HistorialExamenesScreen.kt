@@ -1,5 +1,6 @@
 package com.example.oftapp.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,7 +35,8 @@ fun HistorialExamenesScreen(
     val sincronizando by viewModel.sincronizando.collectAsState()
     val mensajeSync by viewModel.mensajeSync.collectAsState()
 
-    val azulHeader = Color(0xFF0066B2)
+    val esAltoContraste = uiState.altoContraste
+    val azulHeader = if (esAltoContraste) Color(0xFFFFD600) else Color(0xFF0066B2)
     val rol = uiState.rolSeleccionado
 
     val examenesPorRol = if (rol == RolUsuario.PACIENTE) {
@@ -44,8 +48,12 @@ fun HistorialExamenesScreen(
     }
 
     val examenesFiltrados = examenesPorRol.filter {
-        it.pacienteNombre.contains(uiState.filtroTexto, ignoreCase = true) ||
-                it.rut.contains(uiState.filtroTexto, ignoreCase = true)
+        val q = uiState.filtroTexto.trim()
+        q.isBlank() ||
+                it.pacienteNombre.contains(q, ignoreCase = true) ||
+                it.rut.contains(q, ignoreCase = true) ||
+                it.fecha.contains(q, ignoreCase = true) ||
+                it.tipoExamen.contains(q, ignoreCase = true)
     }
 
     val pendientesSyncCount = uiState.listaExamenes.count { !it.sincronizado }
@@ -65,9 +73,12 @@ fun HistorialExamenesScreen(
                     .fillMaxWidth()
                     .padding(16.dp)
                     .height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = azulHeader)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = azulHeader,
+                    contentColor = if (esAltoContraste) Color.Black else Color.White
+                )
             ) {
-                Text("Volver al Inicio")
+                Text("Volver al Inicio", fontWeight = FontWeight.Bold)
             }
         }
     ) { padding ->
@@ -81,7 +92,9 @@ fun HistorialExamenesScreen(
                 onClick = { viewModel.sincronizarConNube() },
                 enabled = !sincronizando,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (pendientesSyncCount > 0) Color(0xFF1565C0) else Color(0xFF2E7D32)
+                    containerColor = if (esAltoContraste) Color(0xFFFFD600)
+                    else if (pendientesSyncCount > 0) Color(0xFF1565C0) else Color(0xFF2E7D32),
+                    contentColor = if (esAltoContraste) Color.Black else Color.White
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -89,7 +102,7 @@ fun HistorialExamenesScreen(
             ) {
                 if (sincronizando) {
                     CircularProgressIndicator(
-                        color = Color.White,
+                        color = if (esAltoContraste) Color.Black else Color.White,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(20.dp)
                     )
@@ -109,7 +122,7 @@ fun HistorialExamenesScreen(
             if (mensajeSync != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
-                    color = Color(0xFFE3F2FD),
+                    color = if (esAltoContraste) Color(0xFF1E1E1E) else Color(0xFFE3F2FD),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -120,11 +133,11 @@ fun HistorialExamenesScreen(
                         Text(
                             text = mensajeSync ?: "",
                             fontSize = 12.sp,
-                            color = Color(0xFF0D47A1),
+                            color = if (esAltoContraste) Color(0xFFFFD600) else Color(0xFF0D47A1),
                             modifier = Modifier.weight(1f)
                         )
                         TextButton(onClick = { viewModel.limpiarMensajeSync() }) {
-                            Text("OK", fontWeight = FontWeight.Bold)
+                            Text("OK", fontWeight = FontWeight.Bold, color = azulHeader)
                         }
                     }
                 }
@@ -134,7 +147,7 @@ fun HistorialExamenesScreen(
 
             if (rol == RolUsuario.MEDICO) {
                 Surface(
-                    color = Color(0xFFF3E5F5),
+                    color = if (esAltoContraste) Color(0xFF1E1E1E) else Color(0xFFF3E5F5),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
                 ) {
@@ -142,29 +155,47 @@ fun HistorialExamenesScreen(
                         text = "Pendientes por validar: ${uiState.totalPendientes} | Validados: ${uiState.totalValidados}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF6A1B9A),
+                        color = if (esAltoContraste) Color(0xFFFFD600) else Color(0xFF6A1B9A),
                         modifier = Modifier.padding(10.dp)
                     )
                 }
             }
 
-            if (rol != RolUsuario.PACIENTE) {
-                OutlinedTextField(
-                    value = uiState.filtroTexto,
-                    onValueChange = { viewModel.onFiltroChange(it) },
-                    label = { Text("Buscar por Paciente o RUT...") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                )
-            } else {
+            OutlinedTextField(
+                value = uiState.filtroTexto,
+                onValueChange = { viewModel.onFiltroChange(it) },
+                label = {
+                    Text(
+                        if (rol == RolUsuario.PACIENTE)
+                            "Buscar por tipo de examen o fecha..."
+                        else
+                            "Buscar por Paciente, RUT, Fecha o Tipo..."
+                    )
+                },
+                colors = if (esAltoContraste) OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color(0xFFFFD600),
+                    unfocusedBorderColor = Color.White,
+                    focusedLabelColor = Color(0xFFFFD600),
+                    unfocusedLabelColor = Color.LightGray
+                ) else OutlinedTextFieldDefaults.colors(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+                    .semantics {
+                        contentDescription = "Campo de búsqueda por nombre, RUT, fecha o tipo de examen"
+                    }
+            )
+
+            if (rol == RolUsuario.PACIENTE) {
                 Text(
                     text = if (examenesFiltrados.isEmpty())
-                        "Aún no tienes exámenes registrados para el RUT ${uiState.usuarioRut}."
+                        "No se encontraron exámenes para el RUT ${uiState.usuarioRut}."
                     else
-                        "Toca cualquier examen para ver el detalle completo y el documento adjunto:",
+                        "Toca cualquier examen para ver el detalle, documento adjunto o escucharlo por voz:",
                     fontSize = 13.sp,
-                    color = Color.Gray,
+                    color = if (esAltoContraste) Color.White else Color.Gray,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
@@ -177,9 +208,15 @@ fun HistorialExamenesScreen(
 
                     Card(
                         onClick = { onVerDetalleExamen(examen) },
-                        modifier = Modifier.fillMaxWidth(),
+                        border = if (esAltoContraste) BorderStroke(2.dp, Color(0xFFFFD600)) else null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics {
+                                contentDescription = "Examen ${examen.tipoExamen} de ${examen.pacienteNombre}, fecha ${examen.fecha}, estado ${examen.observaciones}."
+                            },
                         colors = CardDefaults.cardColors(
-                            containerColor = if (esValidado) Color(0xFFE8F5E9) else Color(0xFFFFF3CD)
+                            containerColor = if (esAltoContraste) Color(0xFF121212)
+                            else if (esValidado) Color(0xFFE8F5E9) else Color(0xFFFFF3CD)
                         )
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
@@ -192,17 +229,20 @@ fun HistorialExamenesScreen(
                                     text = examen.pacienteNombre,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
+                                    color = if (esAltoContraste) Color.White else Color.Black,
                                     modifier = Modifier.weight(1f)
                                 )
                                 Surface(
-                                    color = if (examen.sincronizado) Color(0xFFE3F2FD) else Color(0xFFFFEBEE),
+                                    color = if (esAltoContraste) Color.Black
+                                    else if (examen.sincronizado) Color(0xFFE3F2FD) else Color(0xFFFFEBEE),
                                     shape = RoundedCornerShape(6.dp)
                                 ) {
                                     Text(
                                         text = if (examen.sincronizado) "☁️ Sincronizado" else "⏳ Pendiente Sync",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (examen.sincronizado) Color(0xFF1565C0) else Color(0xFFC62828),
+                                        color = if (esAltoContraste) Color(0xFFFFD600)
+                                        else if (examen.sincronizado) Color(0xFF1565C0) else Color(0xFFC62828),
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
@@ -211,26 +251,31 @@ fun HistorialExamenesScreen(
                             Text(
                                 text = "RUT: ${examen.rut} • Fecha: ${examen.fecha}",
                                 fontSize = 12.sp,
-                                color = Color.Gray
+                                color = if (esAltoContraste) Color(0xFFFFF59D) else Color.Gray
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "Examen: ${examen.tipoExamen}",
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                color = if (esAltoContraste) Color.White else Color.Black
                             )
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
                                 text = "Estado: ${examen.observaciones}",
-                                color = if (esValidado) Color(0xFF2E7D32) else Color(0xFF856404),
+                                color = if (esAltoContraste) Color(0xFFFFD600)
+                                else if (esValidado) Color(0xFF2E7D32) else Color(0xFF856404),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp
                             )
 
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = if (examen.documentoUri != null) "📎 Tiene documento adjunto • Toca para visualizar ›" else "👁️ Toca para ver ficha clínica completa ›",
+                                text = if (examen.documentoUri != null)
+                                    "📎 Tiene documento adjunto • Toca para visualizar y escuchar ›"
+                                else
+                                    "🔊 Toca para ver ficha clínica y lectura en voz alta ›",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = azulHeader
@@ -240,10 +285,13 @@ fun HistorialExamenesScreen(
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Button(
                                     onClick = { viewModel.validarExamen(examen.id) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (esAltoContraste) Color(0xFFFFD600) else Color(0xFF2E7D32),
+                                        contentColor = if (esAltoContraste) Color.Black else Color.White
+                                    ),
                                     modifier = Modifier.fillMaxWidth().height(48.dp)
                                 ) {
-                                    Text("✔ Validar y Firmar Examen")
+                                    Text("✔ Validar y Firmar Examen", fontWeight = FontWeight.Bold)
                                 }
                             }
                         }

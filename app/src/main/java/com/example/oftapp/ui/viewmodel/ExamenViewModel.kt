@@ -36,6 +36,11 @@ class ExamenViewModel(
                 _uiState.update { it.copy(escalaTexto = escalaGuardada) }
             }
         }
+        viewModelScope.launch {
+            accesibilidadPrefs.altoContrasteFlow.collect { contrasteGuardado ->
+                _uiState.update { it.copy(altoContraste = contrasteGuardado) }
+            }
+        }
     }
 
     fun onUsuarioTextoChange(texto: String) {
@@ -142,6 +147,14 @@ class ExamenViewModel(
         _uiState.update { it.copy(escalaTexto = nuevaEscala) }
         viewModelScope.launch {
             accesibilidadPrefs.guardarEscalaTexto(nuevaEscala)
+        }
+    }
+
+    fun onToggleAltoContraste() {
+        val nuevoValor = !_uiState.value.altoContraste
+        _uiState.update { it.copy(altoContraste = nuevoValor) }
+        viewModelScope.launch {
+            accesibilidadPrefs.guardarAltoContraste(nuevoValor)
         }
     }
 
